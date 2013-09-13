@@ -7,8 +7,9 @@ use strict;
 use Irssi;
 use vars qw($VERSION %IRSSI $CTX $SOCK $STATE);
 
-use MIME::Base64;
-use ZeroMQ qw/:all/;
+use JSON;
+use ZMQ::LibZMQ3;
+use ZMQ::Constants qw/:all/;
 
 $VERSION = "1";
 
@@ -21,68 +22,76 @@ $VERSION = "1";
     url         => 'http://github.com/larsks/znotify',
 );
 
-$CTX = ZeroMQ::Context->new;
+$CTX = zmq_init;
 $SOCK = undef;
 $STATE = 0;
+
+sub send_event {
+	my ($event, $message, $data) = @_;
+
+	zmq_send($SOCK, $event, -1, ZMQ_SNDMORE);
+	zmq_send($SOCK, to_json({
+		message => $message,
+		data => $data,
+	}));
+}
 
 sub query_created {
     my ($query, $auto) = @_;
 
-    my $qwin = $query->window();
-    my $serv = $query->{server};
-    my $nick = $query->{name};
-    my $tag  = lc $query->{server_tag};
+    my $qwin   = $query->window();
+    my $server = $query->{server};
+    my $nick   = $query->{name};
+    my $tag    = lc $query->{server_tag};
 
-	$SOCK->send_as(json => {
-		event => "query created",
-		message => "New query with " . $nick . ".",
-		data => {
+	send_event("query created",
+		"New query with " . $nick . ".",
+		{
 			nick => $nick,
-		},
-	});
+			away => $server->{usermode_away},
+		});
 }
 
 sub message_private {
 	my ($server, $msg, $nick, $address) = @_;
 
-	$SOCK->send_as(json => {
-		event => "message private",
-		message => "Private message from " . $nick . ".",
-		data => {
+	send_event("message private",
+		"Private message from " . $nick . ".",
+		{
 			nick => $nick,
 			message => $msg,
-		},
-	});
+			away => $server->{usermode_away},
+		});
 }
 
 sub window_item_hilight {
 	my ($item) = @_;
+	my $server = $item->{server};
 
 	return unless $item->{data_level} == 3;
 	
-	$SOCK->send_as(json => {
-		event => "window item hilight",
-		message => "Hilight in " . $item->{name} . ".",
-		data => {
+	send_event("window item hilight",
+		"Hilight in " . $item->{name} . ".",
+		{
 			name => $item->{name},
-		},
-	});
+			away => $server->{usermode_away},
+		});
 }
 
 sub cmd_znotify_reconnect {
-	$SOCK = $CTX->socket(ZMQ_PUB);
+	my ($data, $server, $item) = @_;
+	$SOCK = zmq_socket($CTX, ZMQ_PUB);
 
 	my $target = Irssi::settings_get_str('znotify_target');
-	$SOCK->connect($target);
+	zmq_connect($SOCK, $target);
 	Irssi::print("Connected to $target.");
 
-	$SOCK->send_as(json => {
-		event => "connect",
-		message => "Connected to " . $target . ".",
-		data => {
+	send_event("znotify connect",
+		"Connected to " . $target . ".",
+		{
 			target => $target,
-		},
-	});
+			away => $server->{usermode_away},
+		});
 }
 
 sub cmd_znotify {
@@ -96,31 +105,37 @@ sub cmd_znotify {
 }
 
 sub cmd_znotify_off {
+	my ($data, $server, $item) = @_;
+
 	Irssi::signal_remove('query created',   \&query_created);
 	Irssi::signal_remove('message private', \&message_private);
 	Irssi::signal_remove('window item hilight',  \&window_item_hilight);
 
 	Irssi::print("znotify is disabled");
 
-	$SOCK->send_as(json=>{
-		event => 'znotify off',
-		message => 'znotify has been disabled.',
-	});
+	send_event("znotify off",
+		'znotify has been disabled.',
+		{
+			away => $server->{usermode_away},
+		});
 
 	$STATE = 0;
 }
 
 sub cmd_znotify_on {
+	my ($data, $server, $item) = @_;
+
 	Irssi::signal_add('query created',   \&query_created);
 	Irssi::signal_add('message private', \&message_private);
 	Irssi::signal_add('window item hilight',  \&window_item_hilight);
 
 	Irssi::print("znotify is enabled");
 
-	$SOCK->send_as(json=>{
-		event => 'znotify on',
-		message => 'znotify has been enabled.',
-	});
+	send_event("znotify on",
+		'znotify has been enabled.',
+		{
+			away => $server->{usermode_away},
+		});
 
 	$STATE = 1;
 }
@@ -137,4 +152,4 @@ cmd_znotify_on;
 
 1;
 
-# vim: ts=4
+# vim: ts=4 sw=4
