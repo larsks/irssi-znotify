@@ -29,7 +29,7 @@ $STATE = 0;
 sub send_event {
 	my ($event, $message, $data) = @_;
 
-	zmq_send($SOCK, $event, -1, ZMQ_SNDMORE);
+	zmq_send($SOCK, "irssi." . $event, -1, ZMQ_SNDMORE);
 	zmq_send($SOCK, to_json({
 		message => $message,
 		data => $data,
@@ -44,7 +44,7 @@ sub query_created {
     my $nick   = $query->{name};
     my $tag    = lc $query->{server_tag};
 
-	send_event("query created",
+	send_event("query.created",
 		"New query with " . $nick . ".",
 		{
 			nick => $nick,
@@ -55,7 +55,7 @@ sub query_created {
 sub message_private {
 	my ($server, $msg, $nick, $address) = @_;
 
-	send_event("message private",
+	send_event("message.private",
 		"Private message from " . $nick . ".",
 		{
 			nick => $nick,
@@ -70,7 +70,7 @@ sub window_item_hilight {
 
 	return unless $item->{data_level} == 3;
 	
-	send_event("window item hilight",
+	send_event("window.item.hilight",
 		"Hilight in " . $item->{name} . ".",
 		{
 			name => $item->{name},
@@ -86,7 +86,7 @@ sub cmd_znotify_reconnect {
 	zmq_connect($SOCK, $target);
 	Irssi::print("Connected to $target.");
 
-	send_event("znotify connect",
+	send_event("znotify.connect",
 		"Connected to " . $target . ".",
 		{
 			target => $target,
@@ -113,7 +113,7 @@ sub cmd_znotify_off {
 
 	Irssi::print("znotify is disabled");
 
-	send_event("znotify off",
+	send_event("znotify.off",
 		'znotify has been disabled.',
 		{
 			away => $server->{usermode_away},
@@ -131,7 +131,7 @@ sub cmd_znotify_on {
 
 	Irssi::print("znotify is enabled");
 
-	send_event("znotify on",
+	send_event("znotify.on",
 		'znotify has been enabled.',
 		{
 			away => $server->{usermode_away},
