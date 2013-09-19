@@ -57,7 +57,8 @@ class Notifier (object):
             n = pynotify.Notification(evt_body['message'])
 
             # make the notification persistent if we are away.
-            if int(evt_body['data'].get('away', 0)):
+            away = evt_body['data'].get('away')
+            if away is not None and int(away):
                 self.log.debug('persisting notification because user is away')
                 n.set_timeout(pynotify.EXPIRES_NEVER)
             n.show()
