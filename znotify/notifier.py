@@ -61,7 +61,13 @@ class Notifier (object):
             if away is not None and int(away):
                 self.log.debug('persisting notification because user is away')
                 n.set_timeout(pynotify.EXPIRES_NEVER)
-            n.show()
+
+            # If there's nothing to receive the notifications, n.show() can
+            # throw a glib.GError exception.
+            try:
+                n.show()
+            except:
+                pass
 
 def parse_args():
     p = argparse.ArgumentParser()
