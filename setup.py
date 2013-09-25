@@ -4,6 +4,7 @@ import setuptools
 
 setuptools.setup(
 #    install_requires=open('requires.txt').readlines(),
+    name = 'znotify',
     packages = ['znotify'],
     entry_points = {
         'console_scripts': [
