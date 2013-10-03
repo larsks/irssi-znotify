@@ -8,12 +8,14 @@ import json
 
 import pynotify
 import zmq
+import xidle
 
 from znotify.common import setup_logging
 
 class Notifier (object):
-    def __init__(self, sub_uri=None):
+    def __init__(self, sub_uri=None,idle_time=None):
         self.sub_uri = sub_uri
+        self.idle_time = int(idle_time)
 
         assert self.sub_uri is not None
 
@@ -56,10 +58,9 @@ class Notifier (object):
 
             n = pynotify.Notification(evt_body['message'])
 
-            # make the notification persistent if we are away.
-            away = evt_body['data'].get('away')
-            if away is not None and int(away):
-                self.log.debug('persisting notification because user is away')
+            if self.idle_time is not None and \
+                    xidle.idle_time_ms() > (self.idle_time * 1000):
+                self.log.debug('persisting notification because user is idle')
                 n.set_timeout(pynotify.EXPIRES_NEVER)
 
             # If there's nothing to receive the notifications, n.show() can
@@ -75,6 +76,8 @@ def parse_args():
     p.add_argument('--sub', '-s',
         default='tcp://localhost:22222')
     p.add_argument('--verbose', '-v', action='store_true')
+    p.add_argument('--idle-time', '-i',
+            default=30)
     p.add_argument('--debug', action='store_true')
 
     return p.parse_args()
@@ -91,7 +94,7 @@ def main():
 
     setup_logging(loglevel)
 
-    notifier = Notifier(opts.sub)
+    notifier = Notifier(opts.sub, idle_time=opts.idle_time)
     notifier.run()
 
 if __name__ == '__main__':
