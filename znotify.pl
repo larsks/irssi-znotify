@@ -47,6 +47,7 @@ sub query_created {
 	send_event("query.created",
 		"New query with " . $nick . ".",
 		{
+			id => "query.created:$nick",
 			nick => $nick,
 			away => $server->{usermode_away},
 		});
@@ -58,6 +59,7 @@ sub message_private {
 	send_event("message.private",
 		"Private message from " . $nick . ".",
 		{
+			id => "message.private:$nick",
 			nick => $nick,
 			message => $msg,
 			away => $server->{usermode_away},
@@ -73,6 +75,7 @@ sub window_item_hilight {
 	send_event("window.item.hilight",
 		"Hilight in " . $item->{name} . ".",
 		{
+			id => "window.item.hilight:" . $item->{name}
 			name => $item->{name},
 			away => $server->{usermode_away},
 		});
@@ -89,6 +92,7 @@ sub cmd_znotify_reconnect {
 	send_event("znotify.connect",
 		"Connected to " . $target . ".",
 		{
+			id => 'znotify.connect:$target',
 			target => $target,
 			away => $server->{usermode_away},
 		});
@@ -116,6 +120,7 @@ sub cmd_znotify_off {
 	send_event("znotify.off",
 		'znotify has been disabled.',
 		{
+			id => 'znotify.off',
 			away => $server->{usermode_away},
 		});
 
@@ -134,6 +139,7 @@ sub cmd_znotify_on {
 	send_event("znotify.on",
 		'znotify has been enabled.',
 		{
+			id => 'znotify.on',
 			away => $server->{usermode_away},
 		});
 
